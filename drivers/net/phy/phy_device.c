@@ -1572,12 +1572,27 @@ EXPORT_SYMBOL(genphy_read_status);
  */
 int genphy_soft_reset(struct phy_device *phydev)
 {
-	int ret;
+	int ret = -1;
+	int retry = 0;
 
-	ret = phy_write(phydev, MII_BMCR, BMCR_RESET);
-	if (ret < 0)
-		return ret;
+	dev_info(&phydev->mdio.dev, "%s %d", __FUNCTION__, __LINE__);
 
+	while(ret){
+		ret = phy_write(phydev, MII_BMCR, BMCR_RESET);
+		if (ret == -EAGAIN){
+			dev_info(&phydev->mdio.dev, "%s %d", __FUNCTION__, __LINE__);
+			if (++retry > 10){
+				dev_warn(&phydev->mdio.dev, "%s %d", __FUNCTION__, __LINE__);
+				return -EIO;
+			}
+		}else{
+			if (ret < 0){
+				dev_info(&phydev->mdio.dev, "%s %d", __FUNCTION__, __LINE__);
+				return ret;
+			}
+		}
+	}
+	dev_info(&phydev->mdio.dev, "%s %d", __FUNCTION__, __LINE__);
 	return phy_poll_reset(phydev);
 }
 EXPORT_SYMBOL(genphy_soft_reset);

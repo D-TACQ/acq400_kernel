@@ -321,18 +321,24 @@ static void macb_get_hwaddr(struct macb *bp)
 	eth_hw_addr_random(bp->dev);
 }
 
-static int macb_mdio_wait_for_idle(struct macb *bp)
+static int macb_mdio_wait_for_idle(struct device *dev, struct macb *bp)
 {
 	ulong timeout;
+	static unsigned report_max;
 
 	timeout = jiffies + msecs_to_jiffies(1000);
 	/* wait for end of transfer */
 	while (1) {
-		if (MACB_BFEXT(IDLE, macb_readl(bp, NSR)))
+		unsigned nsr = macb_readl(bp, NSR);
+		if (++report_max < 100){
+			dev_info(dev, "%s bp:%p regs:%p NSR=%08x MAXB_BFEXT(IDLE, nsr)=%x\n", __FUNCTION__,
+					bp, bp->regs, nsr, MACB_BFEXT(IDLE, nsr));
+		}
+		if (MACB_BFEXT(IDLE, nsr))
 			break;
 
 		if (time_after_eq(jiffies, timeout)) {
-			netdev_err(bp->dev, "wait for end of transfer timed out\n");
+			dev_err(dev, "wait for end of transfer timed out\n");
 			return -ETIMEDOUT;
 		}
 
@@ -352,9 +358,11 @@ static int macb_mdio_read(struct mii_bus *bus, int mii_id, int regnum)
 #if PGM_DEBUG
 	static int report_done;
 	static int ret_report_done[2];
+	static int writes = 0;
 
 	if (!report_done && bus->priv != bp){
 		dev_warn(&bus->dev, "%s hack id:%d bp %p using %p", __FUNCTION__, mii_id, bus->priv, bp);
+		writes = 0;
 		report_done = 1;
 	}
 #endif
@@ -363,24 +371,31 @@ static int macb_mdio_read(struct mii_bus *bus, int mii_id, int regnum)
 	    !device_may_wakeup(&bp->dev->dev))
 		return -EAGAIN;
 
-	err = macb_mdio_wait_for_idle(bp);
+	err = macb_mdio_wait_for_idle(&bus->dev, bp);
 	if (err < 0)
 		return err;
 
+	if (++writes < 5)
+	dev_info(&bus->dev, "%s macb_writel(%p %x %08x)", __FUNCTION__, bp, MACB_MAN,
+			MACB_BF(SOF, MACB_MAN_SOF)
+						      | MACB_BF(RW, MACB_MAN_READ)
+						      | MACB_BF(PHYA, mii_id)
+						      | MACB_BF(REGA, regnum)
+						      | MACB_BF(CODE, MACB_MAN_CODE));
 	macb_writel(bp, MAN, (MACB_BF(SOF, MACB_MAN_SOF)
 			      | MACB_BF(RW, MACB_MAN_READ)
 			      | MACB_BF(PHYA, mii_id)
 			      | MACB_BF(REGA, regnum)
 			      | MACB_BF(CODE, MACB_MAN_CODE)));
 
-	err = macb_mdio_wait_for_idle(bp);
+	err = macb_mdio_wait_for_idle(&bus->dev, bp);
 	if (err < 0)
 		return err;
 
 	value = MACB_BFEXT(DATA, macb_readl(bp, MAN));
 
 #if PGM_DEBUG
-	if (ret_report_done[mii_id!=0]++ == 0){
+	if (writes < 5 || ret_report_done[mii_id!=0]++ == 0){
 		dev_info(&bus->dev, "%s id:%d CODE:%x return %x", __FUNCTION__, mii_id, MACB_BF(PHYA, mii_id), value);
 	}
 #endif
@@ -397,22 +412,38 @@ static int macb_mdio_write(struct mii_bus *bus, int mii_id, int regnum,
 #if PGM_DEBUG
 	static int writes = 0;
 	static int report_done;
+	int tell_me_now = 0;
 
 	if (!report_done && bus->priv != bp){
 		dev_warn(&bus->dev, "%s hack bp %p using %p", __FUNCTION__, bus->priv, bp);
 		report_done = 1;
+		tell_me_now = 1;
+	}
+#endif
+#if 0
+	if (pm_runtime_status_suspended(&bp->pdev->dev) &&
+	    !device_may_wakeup(&bp->dev->dev)){
+		dev_warn(&bus->dev, "%s %d (%d && %d) return -EAGAIN", __FUNCTION__, __LINE__,
+				pm_runtime_status_suspended(&bp->pdev->dev),
+				!device_may_wakeup(&bp->dev->dev));
+		return -EAGAIN;
 	}
 #endif
 
-	if (pm_runtime_status_suspended(&bp->pdev->dev) &&
-	    !device_may_wakeup(&bp->dev->dev))
-		return -EAGAIN;
-
-	if (writes < 10 ) dev_info(&bus->dev, "%s %d", __FUNCTION__, __LINE__);
-	err = macb_mdio_wait_for_idle(bp);
+	if (tell_me_now || writes < 5 ) dev_info(&bus->dev, "%s %d", __FUNCTION__, __LINE__);
+	err = macb_mdio_wait_for_idle(&bus->dev, bp);
 	if (err < 0)
 		return err;
-	if (writes < 10) dev_info(&bus->dev, "%s %d", __FUNCTION__, __LINE__);
+	if (tell_me_now || writes < 5 ) dev_info(&bus->dev, "%s %d", __FUNCTION__, __LINE__);
+
+	if (tell_me_now || writes < 5 )
+	dev_info(&bus->dev, "%s macb_writel(%p %x %08x)", __FUNCTION__, bp, MACB_MAN,
+			MACB_BF(SOF, MACB_MAN_SOF)
+						      | MACB_BF(RW, MACB_MAN_READ)
+						      | MACB_BF(PHYA, mii_id)
+						      | MACB_BF(REGA, regnum)
+						      | MACB_BF(CODE, MACB_MAN_CODE));
+
 	macb_writel(bp, MAN, (MACB_BF(SOF, MACB_MAN_SOF)
 			      | MACB_BF(RW, MACB_MAN_WRITE)
 			      | MACB_BF(PHYA, mii_id)
@@ -420,11 +451,11 @@ static int macb_mdio_write(struct mii_bus *bus, int mii_id, int regnum,
 			      | MACB_BF(CODE, MACB_MAN_CODE)
 			      | MACB_BF(DATA, value)));
 
-	err = macb_mdio_wait_for_idle(bp);
-	if (writes < 10) dev_info(&bus->dev, "%s %d", __FUNCTION__, __LINE__);
+	err = macb_mdio_wait_for_idle(&bus->dev, bp);
+	if (tell_me_now || writes < 5 ) dev_info(&bus->dev, "%s %d", __FUNCTION__, __LINE__);
 	if (err < 0)
 		return err;
-	if (writes < 10) dev_info(&bus->dev, "%s %d", __FUNCTION__, __LINE__);
+	if (tell_me_now || writes < 5 ) dev_info(&bus->dev, "%s %d", __FUNCTION__, __LINE__);
 	++writes;
 	return 0;
 }
@@ -3698,6 +3729,7 @@ static int macb_probe(struct platform_device *pdev)
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
 	native_io = hw_is_native_io(mem);
+	dev_info(&pdev->dev, "%s native_io %d", __FUNCTION__, native_io);
 
 	macb_probe_queues(mem, native_io, &queue_mask, &num_queues);
 	dev = alloc_etherdev_mq(sizeof(*bp), num_queues);
