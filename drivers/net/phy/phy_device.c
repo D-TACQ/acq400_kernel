@@ -732,15 +732,17 @@ int phy_connect_direct(struct net_device *dev, struct phy_device *phydev,
 {
 	int rc;
 
+	netdev_info(dev, "%s %d", __FUNCTION__, __LINE__);
 	rc = phy_attach_direct(dev, phydev, phydev->dev_flags, interface);
 	if (rc)
 		return rc;
-
+	netdev_info(dev, "%s %d", __FUNCTION__, __LINE__);
 	phy_prepare_link(phydev, handler);
+	netdev_info(dev, "%s %d", __FUNCTION__, __LINE__);
 	phy_start_machine(phydev);
 	if (phydev->irq > 0)
 		phy_start_interrupts(phydev);
-
+	netdev_info(dev, "%s %d", __FUNCTION__, __LINE__);
 	return 0;
 }
 EXPORT_SYMBOL(phy_connect_direct);
@@ -848,22 +850,25 @@ static int phy_poll_reset(struct phy_device *phydev)
 int phy_init_hw(struct phy_device *phydev)
 {
 	int ret = 0;
-
+	dev_info(&phydev->mdio.dev, "%s %d", __FUNCTION__, __LINE__);
 	if (!phydev->drv || !phydev->drv->config_init)
 		return 0;
-
-	if (phydev->drv->soft_reset)
+	dev_info(&phydev->mdio.dev, "%s %d", __FUNCTION__, __LINE__);
+	if (phydev->drv->soft_reset){
+		dev_info(&phydev->mdio.dev, "%s %d", __FUNCTION__, __LINE__);
 		ret = phydev->drv->soft_reset(phydev);
-	else
+	}else{
+		dev_info(&phydev->mdio.dev, "%s %d", __FUNCTION__, __LINE__);
 		ret = genphy_soft_reset(phydev);
-
+	}
+	dev_info(&phydev->mdio.dev, "%s %d", __FUNCTION__, __LINE__);
 	if (ret < 0)
 		return ret;
-
+	dev_info(&phydev->mdio.dev, "%s %d", __FUNCTION__, __LINE__);
 	ret = phy_scan_fixups(phydev);
 	if (ret < 0)
 		return ret;
-
+	dev_info(&phydev->mdio.dev, "%s %d", __FUNCTION__, __LINE__);
 	return phydev->drv->config_init(phydev);
 }
 EXPORT_SYMBOL(phy_init_hw);
@@ -937,6 +942,7 @@ int phy_attach_direct(struct net_device *dev, struct phy_device *phydev,
 	bool using_genphy = false;
 	int err;
 
+	netdev_info(dev, "%s %d", __FUNCTION__, __LINE__);
 	/* For Ethernet device drivers that register their own MDIO bus, we
 	 * will have bus->owner match ndev_mod, so we do not want to increment
 	 * our own module->refcnt here, otherwise we would not be able to
@@ -946,7 +952,7 @@ int phy_attach_direct(struct net_device *dev, struct phy_device *phydev,
 		dev_err(&dev->dev, "failed to get the bus module\n");
 		return -EIO;
 	}
-
+	netdev_info(dev, "%s %d", __FUNCTION__, __LINE__);
 	get_device(d);
 
 	/* Assume that if there is no driver, that it doesn't
@@ -960,13 +966,13 @@ int phy_attach_direct(struct net_device *dev, struct phy_device *phydev,
 
 		using_genphy = true;
 	}
-
+	netdev_info(dev, "%s %d", __FUNCTION__, __LINE__);
 	if (!try_module_get(d->driver->owner)) {
 		dev_err(&dev->dev, "failed to get the device driver module\n");
 		err = -EIO;
 		goto error_put_device;
 	}
-
+	netdev_info(dev, "%s %d", __FUNCTION__, __LINE__);
 	if (using_genphy) {
 		err = d->driver->probe(d);
 		if (err >= 0)
@@ -975,13 +981,13 @@ int phy_attach_direct(struct net_device *dev, struct phy_device *phydev,
 		if (err)
 			goto error_module_put;
 	}
-
+	netdev_info(dev, "%s %d", __FUNCTION__, __LINE__);
 	if (phydev->attached_dev) {
 		dev_err(&dev->dev, "PHY already attached\n");
 		err = -EBUSY;
 		goto error;
 	}
-
+	netdev_info(dev, "%s %d", __FUNCTION__, __LINE__);
 	phydev->phy_link_change = phy_link_change;
 	phydev->attached_dev = dev;
 	dev->phydev = phydev;
@@ -1006,7 +1012,7 @@ int phy_attach_direct(struct net_device *dev, struct phy_device *phydev,
 
 		phydev->sysfs_links = true;
 	}
-
+	netdev_info(dev, "%s %d", __FUNCTION__, __LINE__);
 	phydev->dev_flags = flags;
 
 	phydev->interface = interface;
@@ -1028,7 +1034,7 @@ int phy_attach_direct(struct net_device *dev, struct phy_device *phydev,
 
 	phy_resume(phydev);
 	phy_led_triggers_register(phydev);
-
+	netdev_info(dev, "%s %d %d", __FUNCTION__, __LINE__, err);
 	return err;
 
 error:

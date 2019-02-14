@@ -319,16 +319,19 @@ struct phy_device *of_phy_connect(struct net_device *dev,
 	struct phy_device *phy = of_phy_find_device(phy_np);
 	int ret;
 
+	netdev_info(dev, "%s %d", __FUNCTION__, __LINE__);
+
 	if (!phy)
 		return NULL;
 
 	phy->dev_flags = flags;
 
+	netdev_info(dev, "%s %d", __FUNCTION__, __LINE__);
 	ret = phy_connect_direct(dev, phy, hndlr, iface);
 
 	/* refcount is held by phy_connect_direct() on success */
 	put_device(&phy->mdio.dev);
-
+	netdev_info(dev, "%s %d", __FUNCTION__, __LINE__);
 	return ret ? NULL : phy;
 }
 EXPORT_SYMBOL(of_phy_connect);

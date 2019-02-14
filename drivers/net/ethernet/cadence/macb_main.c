@@ -342,11 +342,22 @@ static int macb_mdio_wait_for_idle(struct macb *bp)
 	return 0;
 }
 
+#define PGM_DEBUG 1
 static int macb_mdio_read(struct mii_bus *bus, int mii_id, int regnum)
 {
-	struct macb *bp = bus->priv;
+	static struct macb * mdio_bp = NULL;
+	struct macb *bp = mdio_bp==NULL? (mdio_bp = bus->priv): mdio_bp;
 	int value;
 	int err;
+#if PGM_DEBUG
+	static int report_done;
+	static int ret_report_done[2];
+
+	if (!report_done && bus->priv != bp){
+		dev_warn(&bus->dev, "%s hack id:%d bp %p using %p", __FUNCTION__, mii_id, bus->priv, bp);
+		report_done = 1;
+	}
+#endif
 
 	if (pm_runtime_status_suspended(&bp->pdev->dev) &&
 	    !device_may_wakeup(&bp->dev->dev))
@@ -368,23 +379,40 @@ static int macb_mdio_read(struct mii_bus *bus, int mii_id, int regnum)
 
 	value = MACB_BFEXT(DATA, macb_readl(bp, MAN));
 
+#if PGM_DEBUG
+	if (ret_report_done[mii_id!=0]++ == 0){
+		dev_info(&bus->dev, "%s id:%d CODE:%x return %x", __FUNCTION__, mii_id, MACB_BF(PHYA, mii_id), value);
+	}
+#endif
 	return value;
 }
 
 static int macb_mdio_write(struct mii_bus *bus, int mii_id, int regnum,
 			   u16 value)
 {
-	struct macb *bp = bus->priv;
+	static struct macb * mdio_bp = NULL;
+	struct macb *bp = mdio_bp==NULL? (mdio_bp = bus->priv): mdio_bp;
 	int err;
+
+#if PGM_DEBUG
+	static int writes = 0;
+	static int report_done;
+
+	if (!report_done && bus->priv != bp){
+		dev_warn(&bus->dev, "%s hack bp %p using %p", __FUNCTION__, bus->priv, bp);
+		report_done = 1;
+	}
+#endif
 
 	if (pm_runtime_status_suspended(&bp->pdev->dev) &&
 	    !device_may_wakeup(&bp->dev->dev))
 		return -EAGAIN;
 
+	if (writes < 10 ) dev_info(&bus->dev, "%s %d", __FUNCTION__, __LINE__);
 	err = macb_mdio_wait_for_idle(bp);
 	if (err < 0)
 		return err;
-
+	if (writes < 10) dev_info(&bus->dev, "%s %d", __FUNCTION__, __LINE__);
 	macb_writel(bp, MAN, (MACB_BF(SOF, MACB_MAN_SOF)
 			      | MACB_BF(RW, MACB_MAN_WRITE)
 			      | MACB_BF(PHYA, mii_id)
@@ -393,9 +421,11 @@ static int macb_mdio_write(struct mii_bus *bus, int mii_id, int regnum,
 			      | MACB_BF(DATA, value)));
 
 	err = macb_mdio_wait_for_idle(bp);
+	if (writes < 10) dev_info(&bus->dev, "%s %d", __FUNCTION__, __LINE__);
 	if (err < 0)
 		return err;
-
+	if (writes < 10) dev_info(&bus->dev, "%s %d", __FUNCTION__, __LINE__);
+	++writes;
 	return 0;
 }
 
@@ -518,19 +548,23 @@ static int macb_mii_probe(struct net_device *dev)
 	int phy_irq;
 	int ret;
 
+	netdev_info(dev, "%s %d", __FUNCTION__, __LINE__);
 	if (bp->phy_node) {
 		phydev = of_phy_connect(dev, bp->phy_node,
 					&macb_handle_link_change, 0,
 					bp->phy_interface);
-		if (!phydev)
+		if (!phydev){
+			netdev_err(dev, "%s %d", __FUNCTION__, __LINE__);
 			return -ENODEV;
+		}
 	} else {
+		netdev_info(dev, "%s %d", __FUNCTION__, __LINE__);
 		phydev = phy_find_first(bp->mii_bus);
 		if (!phydev) {
 			netdev_err(dev, "no PHY found\n");
 			return -ENXIO;
 		}
-
+		netdev_info(dev, "%s %d", __FUNCTION__, __LINE__);
 		pdata = dev_get_platdata(&bp->pdev->dev);
 		if (pdata && gpio_is_valid(pdata->phy_irq_pin)) {
 			ret = devm_gpio_request(&bp->pdev->dev,
@@ -541,7 +575,7 @@ static int macb_mii_probe(struct net_device *dev)
 					      PHY_POLL : phy_irq;
 			}
 		}
-
+		netdev_info(dev, "%s %d", __FUNCTION__, __LINE__);
 		/* attach the mac to the phy */
 		ret = phy_connect_direct(dev, phydev, &macb_handle_link_change,
 					 bp->phy_interface);
@@ -549,13 +583,14 @@ static int macb_mii_probe(struct net_device *dev)
 			netdev_err(dev, "Could not attach to PHY\n");
 			return ret;
 		}
+		netdev_info(dev, "%s %d", __FUNCTION__, __LINE__);
 	}
 
 	/* mask with MAC supported features */
 	if (macb_is_gem(bp) && bp->caps & MACB_CAPS_GIGABIT_MODE_AVAILABLE)
-		phydev->supported &= PHY_GBIT_FEATURES;
+		phydev->supported &= PHY_GBIT_FEATURES | SUPPORTED_FIBRE;
 	else
-		phydev->supported &= PHY_BASIC_FEATURES;
+		phydev->supported &= PHY_BASIC_FEATURES | SUPPORTED_FIBRE;
 
 	if (bp->caps & MACB_CAPS_NO_GIGABIT_HALF)
 		phydev->supported &= ~SUPPORTED_1000baseT_Half;
@@ -566,7 +601,7 @@ static int macb_mii_probe(struct net_device *dev)
 	bp->speed = 0;
 	bp->duplex = -1;
 	bp->phy_dev = phydev;
-
+	netdev_info(dev, "%s %d", __FUNCTION__, __LINE__);
 	return 0;
 }
 
@@ -2437,12 +2472,19 @@ static int macb_close(struct net_device *dev)
 
 	netif_tx_stop_all_queues(dev);
 	napi_disable(&bp->napi);
-
+#ifdef BPECOMOUT
 	if (bp->phy_dev)
 		phy_stop(bp->phy_dev);
+#else
+	netdev_warn(dev, "STUBBED phy_stop()");
+#endif
 
 	spin_lock_irqsave(&bp->lock, flags);
+#ifdef BPECOMOUT
 	macb_reset_hw(bp);
+#else
+	netdev_warn(dev, "STUBBED macb_reset_hw()");
+#endif
 	netif_carrier_off(dev);
 	spin_unlock_irqrestore(&bp->lock, flags);
 
@@ -3781,7 +3823,7 @@ static int macb_probe(struct platform_device *pdev)
 	if (bp->caps & MACB_CAPS_WOL)
 		device_set_wakeup_capable(&bp->dev->dev, 1);
 
-	netdev_info(dev, "Cadence %s rev 0x%08x at 0x%08lx irq %d (%pM)\n",
+	netdev_info(dev, "Cadence %s rev 0x%08x at 0x%08lx irq %d (%pM) BPE HACK\n",
 		    macb_is_gem(bp) ? "GEM" : "MACB", macb_readl(bp, MID),
 		    dev->base_addr, dev->irq, dev->dev_addr);
 
