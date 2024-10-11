@@ -108,6 +108,11 @@
 				compatible = "at,24c64";
 				reg = <0x50>;
 			};
+			fmc1_54: eeprom@54 {
+				compatible = "at,24c64";
+				reg = <0x54>;
+				status = "disabled";
+			};
 			hwmon@28 {
 				compatible="ad,ad7417";
 				reg=<0x28>;
@@ -121,6 +126,11 @@
 			eeprom@50 {
 				compatible = "at,24c64";
 				reg = <0x50>;
+			};
+			fmc2_54: eeprom@54 {
+				compatible = "at,24c64";
+				reg = <0x54>;
+				status = "disabled";
 			};
 			hwmon@28 {
 				compatible="ad,ad7417";
@@ -136,6 +146,11 @@
 				compatible = "at,24c64";
 				reg = <0x50>;
 			};
+			fmc3_54: eeprom@54 {
+				compatible = "at,24c64";
+				reg = <0x54>;
+				status = "disabled";
+			};
 			hwmon@28 {
 				compatible="ad,ad7417";
 				reg=<0x28>;
@@ -149,6 +164,11 @@
 			eeprom@50 {
 				compatible = "at,24c64";
 				reg = <0x50>;
+			};
+			fmc4_54: eeprom@54 {
+				compatible = "at,24c64";
+				reg = <0x54>;
+				status = "disabled";
 			};
 			hwmon@28 {
 				compatible="ad,ad7417";
@@ -164,6 +184,11 @@
 				compatible = "at,24c64";
 				reg = <0x50>;
 			};
+			fmc5_54: eeprom@54 {
+				compatible = "at,24c64";
+				reg = <0x54>;
+				status = "disabled";
+			};
 			hwmon@28 {
 				compatible="ad,ad7417";
 				reg=<0x28>;
@@ -177,6 +202,11 @@
 			eeprom@50 {
 				compatible = "at,24c64";
 				reg = <0x50>;
+			};
+			fmc6_54: eeprom@54 {
+				compatible = "at,24c64";
+				reg = <0x54>;
+				status = "disabled";
 			};
 			hwmon@28 {
 				compatible="ad,ad7417";

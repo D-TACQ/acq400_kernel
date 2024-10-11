@@ -1031,6 +1031,7 @@ dtb-$(CONFIG_ARCH_ZYNQ) += \
 	acq2106sfp2.dtb \
 	acq2106d37.dtb \
 	acq2106d37sfp.dtb \
+	acq2106sfp_fmc54.dtb \
 	acq2206.dtb \
 	acq2206sfp.dtb \
 	acq2206d37.dtb \
