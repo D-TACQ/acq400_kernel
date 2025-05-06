@@ -41,13 +41,6 @@
 
 				spi-max-frequency = <10000000>;
 				compatible = "adi,ad4858";
-			};			
-			ad4858_5X: adc@5f{
-				reg = <0x5F>;
-
-				spi-max-frequency = <10000000>;
-				compatible = "adi,ad4858";
-				status = "disabled";
 			};
 		};
 	};
