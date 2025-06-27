@@ -21,25 +21,25 @@
                 pwm-names = "cnv";
 */
 				reg = <0x30>;
-				spi-max-frequency = <10000000>;
+				spi-max-frequency = <20000000>;
 				compatible = "adi,ad4858";
 			};
 			ad4858_3B: adc@31{
 				reg = <0x31>;
 
-				spi-max-frequency = <10000000>;
+				spi-max-frequency = <20000000>;
 				compatible = "adi,ad4858";
 			};
 			ad4858_3C: adc@32{
 				reg = <0x32>;
 
-				spi-max-frequency = <10000000>;
+				spi-max-frequency = <20000000>;
 				compatible = "adi,ad4858";
 			};
 			ad4858_3D: adc@33{
 				reg = <0x33>;
 
-				spi-max-frequency = <10000000>;
+				spi-max-frequency = <20000000>;
 				compatible = "adi,ad4858";
 			};
 		};
