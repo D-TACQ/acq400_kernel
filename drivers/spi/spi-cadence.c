@@ -280,19 +280,21 @@ static void cdns_spi_config_clock_mode(struct spi_device *spi)
  * controller the driver will set the highest or lowest frequency supported by
  * controller.
  */
+
 static void cdns_spi_config_clock_freq(struct spi_device *spi,
 				       struct spi_transfer *transfer)
 {
 	struct cdns_spi *xspi = spi_master_get_devdata(spi->master);
 	u32 ctrl_reg, baud_rate_val;
 	unsigned long frequency;
+	int change_requested;
 
 	frequency = clk_get_rate(xspi->ref_clk);
 
 	ctrl_reg = cdns_spi_read(xspi, CDNS_SPI_CR);
 
 	/* Set the clock frequency */
-	if (xspi->speed_hz != transfer->speed_hz) {
+	if ((change_requested = (xspi->speed_hz != transfer->speed_hz))) {
 		/* first valid value is 1 */
 		baud_rate_val = CDNS_SPI_BAUD_DIV_MIN;
 		while ((baud_rate_val < CDNS_SPI_BAUD_DIV_MAX) &&
@@ -304,8 +306,17 @@ static void cdns_spi_config_clock_freq(struct spi_device *spi,
 
 		xspi->speed_hz = frequency / (2 << baud_rate_val);
 	}
+
+	dev_dbg(&spi->controller->dev, "ref_clk frequency:%lu Hz speed_req=%u Hz speed_act=%u Hz CR 0x%08x BR 0x%08x div=%u %s",
+					frequency, transfer->speed_hz, xspi->speed_hz,
+					ctrl_reg, CDNS_SPI_BAUD_DIV_MAX<<CDNS_SPI_BAUD_DIV_SHIFT,
+					(ctrl_reg>>CDNS_SPI_BAUD_DIV_SHIFT)&CDNS_SPI_BAUD_DIV_MAX,
+					change_requested? "CHANGE": "no change");
+
+
 	cdns_spi_write(xspi, CDNS_SPI_CR, ctrl_reg);
 }
+
 
 /**
  * cdns_spi_setup_transfer - Configure SPI controller for specified transfer
@@ -325,9 +336,8 @@ static int cdns_spi_setup_transfer(struct spi_device *spi,
 
 	cdns_spi_config_clock_freq(spi, transfer);
 
-	dev_dbg(&spi->dev, "%s, mode %d, %u bits/w, %u clock speed\n",
-		__func__, spi->mode, spi->bits_per_word,
-		xspi->speed_hz);
+	dev_dbg(&spi->controller->dev, "mode %d, %u bits/w, %u clock speed\n",
+		spi->mode, spi->bits_per_word, xspi->speed_hz);
 
 	return 0;
 }
