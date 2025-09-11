@@ -1,0 +1,230 @@
+/*
+ * Copyright (C) 2013-2019 D-TACQ Solutions Ltd - http://www.d-tacq.com/
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+/dts-v1/;
+
+/ {
+	model = "D-TACQ ACQ1102 DAQ Appliance";
+	compatible = "xlnx,zynq-zed", "xlnx,zynq-7000";
+
+	chosen {
+		bootargs = "";
+		stdout-path = "serial0:115200n8";
+		build="__DATE__";	
+		descr="device tree for ACQ1102, TWO SITES + SITE3=0x75 DIO4 supports MGTA, MGTB";
+		model="acq1102";
+		compatible_model="acq1102";		
+	};
+};	
+
+
+
+#include "acq400_common.dtsi"
+
+/*
+{
+         aliases {
+                    ethernet1 = &gem1;
+         };
+};
+*/
+
+/* gem1 connects to SFP3 1000-baseX , available AFTER FPGA boot, enable with overlay */
+&gem1 {
+         phy-mode = "gmii";
+         phy-handle = <&ethernet_phy1>;
+
+         ethernet_phy1: ethernet-phy@0 {
+                 reg = <0>;
+                 xlnx,phy-type = <0x5>;
+                 /* device_type = "ethernet-phy"; */
+         };
+};
+
+&clkc {
+        /* has no effect */
+        clock-names = "gem1_emio_clk";
+};
+
+
+&amba {
+	sitec: acq2006sc@40000000 {
+		reg = <0x40000000 0x10000>;
+		compatible = "D-TACQ,acq2006sc";
+		site = <0>;
+		interrupts = <0x0 31 0x4>, <0x0 32 0x4>;
+		interrupt-parent = <0x1>;
+	};
+	site1: acq400fmc@40010000 {
+		compatible = "D-TACQ,acq400fmc";
+		reg = <0x40010000 0x10000>;
+		interrupts = <0x0 59 0x4>;
+		interrupt-parent = <&intc>;
+		site = <1>;
+	};
+	site2: acq400fmc@40020000 {
+		compatible = "D-TACQ,acq400fmc";
+		reg = <0x40020000 0x10000>;
+		interrupts = <0x0 57 0x4>;
+		interrupt-parent = <0x1>;
+		site = <2>;
+	};
+	site3: acq400fmc@40030000 {
+		compatible = "D-TACQ,acq400fmc";
+		reg = <0x40030000 0x10000>;
+		interrupts = <0x0 55 0x4>;
+		interrupt-parent = <0x1>;
+		site = <3>;
+	};
+	site4: acq400fmc@40040000 {
+		compatible = "D-TACQ,acq400fmc";
+		reg = <0x40040000 0x10000>;
+		interrupts = <0x0 53 0x4>;
+		interrupt-parent = <0x1>;
+		site = <4>;
+	};
+	commsB: mgt400@400c0000 {
+		status = "disabled";
+		compatible = "D-TACQ,mgt400";
+		reg = <0x400c0000 0x10000>;
+		interrupts = <0x0 58 0x4>;
+		interrupt-parent = <0x1>;
+		site = <12>;
+		sn = <1>;
+	};
+	commsA: mgt400@400d0000 {
+		status = "disabled";
+		compatible = "D-TACQ,mgt400";
+		reg = <0x400d0000 0x10000>;
+		interrupts = <0x0 56 0x4>;
+		interrupt-parent = <0x1>;
+		site = <13>;
+		sn = <0>;
+	};
+	/* dsp1, dsp2 : see acq400_common.dtsi */
+	wr: wr@80080000 {
+		status = "disabled";   /* @@todo : how does WR figure this? */
+	};
+	/* axiA, axiB : see acq400_common.dtsi */
+};
+
+&i2c0 {
+	status = "okay";
+	clock-frequency = <100000>;
+
+	i2c-reset = <&gpio0 46 0>;
+	i2c0sw74: i2cswitch@74 {
+		compatible = "nxp,pca9548";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x74>;
+
+		mb_i2c: i2c@0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0>;
+
+			signals: gpio@22 {
+				compatible="ti,tca6424";
+				vcc-supply = <&regulator_vccpint>;
+				interrupts = <0 0>;
+				reg=<0x22>;
+			};
+			mb: gpio@23 {
+				compatible="ti,tca6424";
+				vcc-supply = <&regulator_vccpint>;
+				interrupts = <0 0>;
+				reg=<0x23>;
+			};
+			hwmon@28 {
+				compatible="ad,ad7417";
+				reg=<0x28>;
+			};
+			psu_2206: ad5282@2c {
+				status = "ok";
+				compatible = "ad,ad5282";
+				reg = <0x2c>;
+			};
+			clockslicer: si5326@68 {
+				compatible="si,si5326";
+				reg=<0x68>;
+			};
+		};
+
+		elf1: i2c@1 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x1>;
+
+			eeprom@50 {
+				compatible = "at,24c64";
+				reg = <0x50>;
+			};
+			hwmon@28 {
+				compatible="ad,ad7417";
+				reg=<0x28>;
+			};
+		};
+		elf2: i2c@2 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x2>;
+
+			eeprom@50 {
+				compatible = "at,24c64";
+				reg = <0x50>;
+			};
+			hwmon@28 {
+				compatible="ad,ad7417";
+				reg=<0x28>;
+			};
+		};
+		sfp1: i2c@3 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x3>;
+			eeprom@50 {
+				compatible = "at,spd";
+				reg = <0x50>;
+				read-only;
+				status="disabled";
+			};
+			ddm@51 {
+				compatible = "at,spd";
+				reg = <0x51>;
+				read-only;
+				status="disabled";
+			};
+		};
+		sfp2: i2c@4 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x4>;
+			eeprom@50 {
+				compatible = "at,spd";
+				reg = <0x50>;
+				read-only;
+				status="disabled";
+			};
+			ddm@51 {
+				compatible = "at,spd";
+				reg = <0x51>;
+				read-only;
+				status="disabled";
+			};
+			si570_clk: mgtclk@55 {
+				compatible = "silabs,si570";
+				reg = <0x55>;
+				temperature-stability = <7>;
+				factory-fout = <200000000>;
+				clock-output-names = "si570_mgt48x";
+				status="disabled";
+			};
+		};
+	};
+};
