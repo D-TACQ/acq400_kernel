@@ -1023,6 +1023,7 @@ dtb-$(CONFIG_ARCH_ZYNQ) += \
 	acq1002p.dtb \
 	acq1002r.dtb \
 	acq1002w.dtb \
+	acq1002octo.dtb \
 	acq1014.dtb \
 	acq1102.dtb \
 	acq1102d.dtb \
