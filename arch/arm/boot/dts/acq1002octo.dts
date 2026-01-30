@@ -146,20 +146,20 @@
 		interrupt-parent = <&intc>;
 		site = <0x2>;
 	};
-        /* site 3 reserved for celf */
-	site4: acq400fmc@40040000 {
-		compatible = "D-TACQ,acq400fmc";
-		reg = <0x40040000 0x10000>;
-		interrupts = <0x0 55 0x4>;
-		interrupt-parent = <&intc>;
-		site = <0x4>;
-	};
+        /* site 3 and 4 reserved for celf */
 	site5: acq400fmc@40050000 {
 		compatible = "D-TACQ,acq400fmc";
 		reg = <0x40050000 0x10000>;
-		interrupts = <0x0 53 0x4>;
+		interrupts = <0x0 55 0x4>;
 		interrupt-parent = <&intc>;
 		site = <0x5>;
+	};
+	site6: acq400fmc@40060000 {
+		compatible = "D-TACQ,acq400fmc";
+		reg = <0x40060000 0x10000>;
+		interrupts = <0x0 53 0x4>;
+		interrupt-parent = <&intc>;
+		site = <0x6>;
 	};
 };
 
