@@ -1079,7 +1079,13 @@ dtb-$(CONFIG_ARCH_ZYNQ) += \
 	acq426_c32_s3_overlay.dtb \
 	acq426_c32_s4_overlay.dtb \
 	acq426_c32_s5_overlay.dtb \
-	acq426_c32_s6_overlay.dtb
+	acq426_c32_s6_overlay.dtb \
+	acq428_s1_overlay.dtb \
+	acq428_s2_overlay.dtb \
+	acq428_s3_overlay.dtb \
+	acq428_s4_overlay.dtb \
+	acq428_s5_overlay.dtb \
+	acq428_s6_overlay.dtb
 
 
 dtb-$(CONFIG_MACH_ARMADA_370) += \
